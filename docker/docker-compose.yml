@@ -1,0 +1,56 @@
+version: '3'
+
+networks:
+  distributed-proxy:
+    driver: bridge
+
+services:
+
+  go-redis-kafka-streamer-db:
+    image: 'library/postgres:latest'
+    container_name: go-redis-kafka-streamer-db
+    env_file:
+      - database.env
+    restart: always
+    networks:
+      - distributed-proxy
+    ports:
+      - 5432:5432
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    networks:
+      - distributed-proxy
+
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    ports:
+      - "8001:8001"
+    depends_on:
+      - redis
+    networks:
+      - distributed-proxy
+
+#  rabbitmq:
+#    image: rabbitmq:3-management-alpine
+#    container_name: 'rabbitmq'
+#    ports:
+#      - 5672:5672
+#      - 15672:15672
+#    networks:
+#      - distributed-proxy
+
+#  go-redis-kafka-streamer-app:
+#    build:
+#      context: ../docker
+#      dockerfile: .Dockerfile
+#    ports:
+#      - 8081:8081
+#    depends_on:
+#      - go-redis-kafka-streamer-db
+#      - rabbitmq
+#    restart: unless-stopped
+#    networks:
+#      - distributed-proxy
