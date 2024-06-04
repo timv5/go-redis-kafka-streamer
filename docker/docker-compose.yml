@@ -33,15 +33,6 @@ services:
     networks:
       - distributed-proxy
 
-#  rabbitmq:
-#    image: rabbitmq:3-management-alpine
-#    container_name: 'rabbitmq'
-#    ports:
-#      - 5672:5672
-#      - 15672:15672
-#    networks:
-#      - distributed-proxy
-
 #  go-redis-kafka-streamer-app:
 #    build:
 #      context: ../docker

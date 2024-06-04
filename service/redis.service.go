@@ -10,6 +10,7 @@ import (
 
 type RedisServiceInterface interface {
 	Save(message *dto.Message) (string, error)
+	Fetch(key string) (*dto.Message, error)
 }
 
 type RedisService struct {

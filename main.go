@@ -7,6 +7,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"go-redis-kafka-streamer/configs"
 	"go-redis-kafka-streamer/handler"
+	"go-redis-kafka-streamer/repository"
 	"go-redis-kafka-streamer/route"
 	"go-redis-kafka-streamer/service"
 	"log"
@@ -27,9 +28,38 @@ func main() {
 	}
 
 	// connect to database
-	configs.ConnectToDB(&config)
+	postgresDB, err := configs.ConnectToDB(&config)
+	if err != nil {
+		panic("Failed to connect to DB")
+	}
 
-	// Initialize a new Redis client
+	redisDatabase := initializeRedisCache(config)
+
+	// initialize repository
+	messageRepository := repository.NewMessageRepository()
+
+	// initialize service
+	redisService := service.NewRedisService(redisDatabase)
+	messageService := service.NewMessageService(&config, redisService, messageRepository, postgresDB)
+
+	// initialize controllers and routes
+	MessageController = handler.NewMessageHandler(configs.DB, messageService, &config)
+	MessageRouteController = route.NewMessageRouteHandler(MessageController)
+
+	server = gin.Default()
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowOrigins = []string{config.ClientOrigin}
+	corsConfig.AllowCredentials = true
+
+	server.Use(cors.New(corsConfig))
+
+	router := server.Group("/api")
+	MessageRouteController.MessageRoute(router)
+
+	log.Fatal(server.Run(":" + config.ServerPort))
+}
+
+func initializeRedisCache(config configs.Config) *redis.Client {
 	redisDb, err := strconv.Atoi(config.RedisDb)
 	if err != nil {
 		panic("Could not initialize app, error converting redis db configs")
@@ -48,23 +78,5 @@ func main() {
 	}
 	log.Println("Redis ping response:", pong)
 
-	// initialize service
-	redisService := service.NewRedisService(redisDatabase)
-	messageService := service.NewMessageService(&config, redisService)
-
-	// initialize controllers and routes
-	MessageController = handler.NewMessageHandler(configs.DB, messageService, &config)
-	MessageRouteController = route.NewMessageRouteHandler(MessageController)
-
-	server = gin.Default()
-	corsConfig := cors.DefaultConfig()
-	corsConfig.AllowOrigins = []string{config.ClientOrigin}
-	corsConfig.AllowCredentials = true
-
-	server.Use(cors.New(corsConfig))
-
-	router := server.Group("/api")
-	MessageRouteController.MessageRoute(router)
-
-	log.Fatal(server.Run(":" + config.ServerPort))
+	return redisDatabase
 }
