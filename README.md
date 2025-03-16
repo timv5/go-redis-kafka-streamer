@@ -3,7 +3,7 @@ Project made for learning purpose of golang & redis
 
 ## Description
 This is a simple backend application containing REST api for saving data
-into Redis cache and then retrieving it - it's also saved into db.
+into Redis cache and then retrieving it - it's also saved into db. Idempotency is also implemented using redis.
 There are 2 endpoints: 
 
 1.

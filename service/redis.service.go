@@ -3,14 +3,17 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"go-redis-kafka-streamer/dto"
+	"time"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
-	"go-redis-kafka-streamer/dto"
 )
 
 type RedisServiceInterface interface {
 	Save(message *dto.Message) (string, error)
 	Fetch(key string) (*dto.Message, error)
+	IdempotencyValidation(key string) (bool, error)
 }
 
 type RedisService struct {
@@ -48,6 +51,20 @@ func (red *RedisService) Fetch(key string) (*dto.Message, error) {
 	}
 
 	return &message, nil
+}
+
+func (red *RedisService) IdempotencyValidation(key string) (bool, error) {
+	if key == "" {
+		return false, nil
+	}
+
+	ctx := context.Background()
+	result, err := red.redisClient.SetNX(ctx, key, "processed", 5*time.Minute).Result()
+	if err != nil {
+		return false, err
+	}
+
+	return result, nil
 }
 
 func generateUUid(header string, body string) string {

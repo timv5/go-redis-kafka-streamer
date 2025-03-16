@@ -1,12 +1,13 @@
 package handler
 
 import (
-	"github.com/gin-gonic/gin"
 	"go-redis-kafka-streamer/configs"
 	"go-redis-kafka-streamer/dto/request"
 	"go-redis-kafka-streamer/service"
-	"gorm.io/gorm"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type MessageHandler struct {
@@ -51,14 +52,14 @@ func (messageHandler MessageHandler) SendMessage(ctx *gin.Context) {
 		return
 	}
 
-	if messagePayload.Body == "" || messagePayload.Header == "" {
+	if messagePayload.Body == "" || messagePayload.Header == "" || messagePayload.UUID == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "wrong request params"})
 		return
 	}
 
-	messageResponse, err := messageHandler.messageService.SaveMessage(messagePayload.Header, messagePayload.Body)
+	messageResponse, err := messageHandler.messageService.SaveMessage(messagePayload.UUID, messagePayload.Header, messagePayload.Body)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"status:": "error", "message": err})
+		ctx.JSON(http.StatusBadRequest, gin.H{"status:": "error", "message": err.Error()})
 		return
 	} else {
 		ctx.JSON(http.StatusOK, messageResponse)

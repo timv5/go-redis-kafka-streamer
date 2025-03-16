@@ -1,16 +1,18 @@
 package service
 
 import (
+	"errors"
 	"go-redis-kafka-streamer/configs"
 	"go-redis-kafka-streamer/dto"
 	"go-redis-kafka-streamer/dto/response"
 	"go-redis-kafka-streamer/repository"
-	"gorm.io/gorm"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type Message interface {
-	SaveMessage(header string, body string) (response.MessageResponse, error)
+	SaveMessage(uuid string, header string, body string) (response.MessageResponse, error)
 	RetrieveMessage(uuid string) (response.RetrieveResponse, error)
 }
 
@@ -25,11 +27,19 @@ func NewMessageService(config *configs.Config, redisService *RedisService, messa
 	return &MessageService{conf: config, redisService: redisService, messageRepository: messageRepository, postgresDB: postgresDB}
 }
 
-func (mess *MessageService) SaveMessage(header string, body string) (response.MessageResponse, error) {
+func (mess *MessageService) SaveMessage(uuid string, header string, body string) (response.MessageResponse, error) {
 	message := &dto.Message{Header: header, Body: body}
 
-	tx := mess.getDbConnection()
+	valid, err := mess.redisService.IdempotencyValidation(uuid)
+	if err != nil {
+		return response.MessageResponse{}, err
+	}
 
+	if !valid {
+		return response.MessageResponse{}, errors.New("Idempotency validation error")
+	}
+
+	tx := mess.getDbConnection()
 	generatedUUID, err := mess.redisService.Save(message)
 	message.Id = generatedUUID
 	if err != nil {
